@@ -1,59 +1,65 @@
-// const { require } = require("yargs");
-const yargs = require("yargs");
-const pkg = require("./package.json");
-const { addNotes, printNotes, removeNote } = require("./note.conrollers");
+const chalk = require("chalk");
+const express = require("express");
+const path = require("path");
+const {
+  addNotes,
+  getNotes,
+  removeNote,
+  changeNote,
+} = require("./note.conrollers");
 
-yargs.version(pkg.version);
+const port = 3000;
 
-yargs.command({
-  command: "add",
-  describe: "Добавить новую заметку",
-  builder: {
-    title: {
-      type: "string",
-      describe: "Название заметки",
-      demandOption: true,
-    },
-  },
-  handler({ title }) {
-    addNotes(title);
-  },
+const app = express();
+
+app.set("view engine", "ejs");
+app.set("views", "pages");
+
+app.use(express.static(path.resolve(__dirname, "public")));
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+// app.use(express.json());
+
+app.get("/", async (req, res) => {
+  res.render("index", {
+    title: "Express App",
+    notes: await getNotes(),
+    created: false,
+  });
 });
 
-yargs.command({
-  command: "list",
-  describe: "Показать все заметки",
-  async handler() {
-    printNotes();
-  },
+app.post("/", async (req, res) => {
+  await addNotes(req.body.title);
+
+  res.render("index", {
+    title: "Express App",
+    notes: await getNotes(),
+    created: true,
+  });
 });
 
-yargs.command({
-  command: "remove",
-  describe: "Удалить заметку по id",
-  builder: {
-    id: {
-      type: "string",
-      describe: "ID заметки",
-      demandOption: true,
-    },
-  },
-  async handler({ id }) {
-    removeNote(id);
-  },
+app.delete("/:id", async (req, res) => {
+  await removeNote(req.params.id);
+  res.render("index", {
+    title: "Express App",
+    notes: await getNotes(),
+    created: false,
+  });
 });
 
-yargs.parse();
+app.put("/:id/:tit", async (req, res) => {
+  const { id, tit } = req.params;
+  await changeNote(id, tit);
+  res.render("index", {
+    title: "Express App",
+    notes: await getNotes(),
+    created: false,
+  });
+});
 
-// require("./module");
-// const pesrson = {
-//   name: "Imp",
-//   age: "36",
-// };
-// function getName(p) {
-//   return p.name;
-// }
-// console.log(getName(pesrson));
-// console.log(__filename);
-// console.log(__dirname);
-// console.log(process.argv);
+app.listen(port, () => {
+  console.log(chalk.blueBright(`Сервер запустился на порту ${port}....`));
+});
